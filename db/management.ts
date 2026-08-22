@@ -48,8 +48,9 @@ export async function getManagementSnapshot(profile: UserProfile) {
     plansQuery = plansQuery.or(`owner_id.eq.${profile.userId},created_by.eq.${profile.userId}`);
   }
 
-  const [profilesResult, plansResult, commentsResult, notificationsResult, conversationsResult, documentsResult, budgetsResult, centersResult, approvalsResult, messagesResult, auditResult] = await Promise.all([
+  const [profilesResult, authUsersResult, plansResult, commentsResult, notificationsResult, conversationsResult, documentsResult, budgetsResult, centersResult, approvalsResult, messagesResult, auditResult] = await Promise.all([
     getActiveProfiles(database),
+    database.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     plansQuery,
     database.from('action_comments').select('*').order('created_at', { ascending: true }),
     database.from('notifications').select('*').eq('recipient_id', profile.userId).order('created_at', { ascending: false }).limit(30),
@@ -67,6 +68,11 @@ export async function getManagementSnapshot(profile: UserProfile) {
   for (const result of [profilesResult, plansResult, commentsResult, notificationsResult, conversationsResult, documentsResult, budgetsResult, centersResult, approvalsResult, messagesResult, auditResult]) {
     if (result.error) throw result.error;
   }
+
+  const jobTitlesByUserId = new Map((authUsersResult.data?.users ?? []).map((user) => [
+    user.id,
+    typeof user.user_metadata?.job_title === 'string' ? user.user_metadata.job_title.trim() : '',
+  ]));
 
   const comments = (commentsResult.data ?? []) as DatabaseRow[];
   const commentsByPlan = new Map<string, DatabaseRow[]>();
@@ -126,7 +132,7 @@ export async function getManagementSnapshot(profile: UserProfile) {
       userId: member.user_id,
       email: profile.role === 'admin' ? member.email : undefined,
       displayName: member.display_name,
-      jobTitle: member.job_title || (member.role === 'admin' ? 'Administrador da Central' : 'Assistente'),
+      jobTitle: member.job_title || jobTitlesByUserId.get(String(member.user_id)) || (member.role === 'admin' ? 'Administrador da Central' : 'Assistente'),
       role: member.role,
       active: member.active,
       assignedPlans: plans.filter((plan) => plan.ownerId === member.user_id && !['completed', 'cancelled'].includes(String(plan.status))).length,
