@@ -43,17 +43,28 @@ export async function requireSupabaseUser(request: Request): Promise<User | null
 }
 
 export async function getUserProfile(user: User): Promise<UserProfile | null> {
-  const { data, error } = await getSupabaseAdmin()
+  const database = getSupabaseAdmin();
+  let { data, error } = await database
     .from('profiles')
     .select('user_id, email, display_name, job_title, role, active')
     .eq('user_id', user.id)
     .maybeSingle();
+  if (error && /job_title/i.test(`${error.code} ${error.message}`)) {
+    const fallback = await database
+      .from('profiles')
+      .select('user_id, email, display_name, role, active')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    data = fallback.data ? { ...fallback.data, job_title: null } : null;
+    error = fallback.error;
+  }
   if (error || !data || !data.active) return null;
+  const metadataJobTitle = typeof user.user_metadata?.job_title === 'string' ? user.user_metadata.job_title.trim() : '';
   return {
     userId: data.user_id,
     email: data.email,
     displayName: data.display_name?.trim() || userDisplayName(user),
-    jobTitle: data.job_title?.trim() || (data.role === 'admin' ? 'Administrador da Central' : 'Assistente'),
+    jobTitle: data.job_title?.trim() || metadataJobTitle || (data.role === 'admin' ? 'Administrador da Central' : 'Assistente'),
     role: data.role as UserRole,
     active: data.active,
   };

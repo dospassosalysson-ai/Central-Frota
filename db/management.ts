@@ -34,6 +34,13 @@ function asChecklist(value: unknown): ChecklistItem[] {
     }));
 }
 
+async function getActiveProfiles(database: ReturnType<typeof getSupabaseAdmin>) {
+  const profiles = await database.from('profiles').select('user_id, email, display_name, job_title, role, active, updated_at').eq('active', true).order('display_name');
+  if (!profiles.error || !/job_title/i.test(`${profiles.error.code} ${profiles.error.message}`)) return profiles;
+  const fallback = await database.from('profiles').select('user_id, email, display_name, role, active, updated_at').eq('active', true).order('display_name');
+  return { ...fallback, data: fallback.data?.map((member) => ({ ...member, job_title: null })) ?? null };
+}
+
 export async function getManagementSnapshot(profile: UserProfile) {
   const database = getSupabaseAdmin();
   let plansQuery = database.from('action_plans').select('*').order('updated_at', { ascending: false });
@@ -42,7 +49,7 @@ export async function getManagementSnapshot(profile: UserProfile) {
   }
 
   const [profilesResult, plansResult, commentsResult, notificationsResult, conversationsResult, documentsResult, budgetsResult, centersResult, approvalsResult, messagesResult, auditResult] = await Promise.all([
-    database.from('profiles').select('user_id, email, display_name, job_title, role, active, updated_at').eq('active', true).order('display_name'),
+    getActiveProfiles(database),
     plansQuery,
     database.from('action_comments').select('*').order('created_at', { ascending: true }),
     database.from('notifications').select('*').eq('recipient_id', profile.userId).order('created_at', { ascending: false }).limit(30),
