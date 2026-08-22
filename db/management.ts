@@ -192,7 +192,7 @@ export async function mutateManagement(action: ManagementAction, profile: UserPr
     const email = action.email.trim().toLowerCase();
     const fullName = action.fullName.trim();
     if (!/^\S+@\S+\.\S+$/.test(email) || !fullName) throw new Error('INVALID_MEMBER');
-    const redirectTo = `${(process.env.APP_URL || 'https://central-frota.onrender.com').replace(/\/$/, '')}/`;
+    const redirectTo = `${(process.env.APP_URL || 'https://central-frota.onrender.com').replace(/\/$/, '')}/?first_access=1`;
     const { data, error } = await database.auth.admin.inviteUserByEmail(email, { redirectTo, data: { full_name: fullName } });
     if (error || !data.user) throw new Error(error?.message || 'INVITE_FAILED');
     if (action.role === 'admin') await database.from('profiles').update({ role: 'admin', updated_at: new Date().toISOString() }).eq('user_id', data.user.id);
