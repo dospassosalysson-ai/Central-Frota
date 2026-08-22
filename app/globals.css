@@ -474,7 +474,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .auth-setup-page { display: grid; grid-template-columns: 1fr; }
 .setup-notice { text-align: center; }
 .setup-notice .auth-lock { margin-inline: auto; }
-.link-button { width: 100%; margin-top: 12px; border: 0; background: transparent; color: #64736d; font-size: 11px; cursor: pointer; }
+.link-button { display: flex; width: 100%; align-items: center; justify-content: center; gap: 5px; margin-top: 12px; border: 0; background: transparent; color: #64736d; font-size: 11px; cursor: pointer; }
+.link-button:hover { color: #176c53; }
+.first-access-page .auth-brand-panel { background: linear-gradient(155deg, #0c2923 0%, #113b31 68%, #174c3e 100%); }
+.first-access-copy { margin-block: 42px 24px; padding-block: 30px; }
+.first-access-copy h1 { max-width: 620px; font-size: clamp(40px, 4.6vw, 66px); }
+.first-access-steps { position: relative; z-index: 1; display: grid; gap: 8px; width: min(430px, 100%); }
+.first-access-steps > div { display: flex; align-items: center; gap: 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; background: rgba(255,255,255,.035); padding: 10px 12px; color: #91aaa1; }
+.first-access-steps > div > span { display: grid; flex: 0 0 auto; width: 30px; height: 30px; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 9px; font-size: 10px; font-weight: 850; }
+.first-access-steps p { display: flex; margin: 0; flex-direction: column; }
+.first-access-steps strong { color: #d8e6e1; font-size: 10px; }
+.first-access-steps small { margin-top: 3px; color: #829b92; font-size: 8px; }
+.first-access-steps .done > span { border-color: rgba(83,213,161,.3); background: rgba(83,213,161,.16); color: #70d9b1; }
+.first-access-steps .active { border-color: rgba(93,223,171,.26); background: rgba(58,188,138,.11); }
+.first-access-steps .active > span { border-color: #4bc594; background: #42bc8c; color: #0d392e; }
+.first-access-form .auth-description strong { color: #40524b; overflow-wrap: anywhere; }
+.password-guidance { display: flex; flex-wrap: wrap; gap: 7px; margin: -4px 0 15px; }
+.password-guidance span { display: flex; align-items: center; gap: 4px; border-radius: 999px; background: #eaf3ef; padding: 5px 8px; color: #447461; font-size: 8px; font-weight: 700; }
 
 .management-workspace { background: #f4f6f5; }
 .management-header { min-height: 104px; }
