@@ -33,8 +33,9 @@ O navegador recebe apenas a chave publicável. A `SUPABASE_SECRET_KEY` fica excl
 
 1. Abra o SQL Editor do projeto.
 2. Execute integralmente [`supabase/schema.sql`](supabase/schema.sql).
-3. Em Authentication → Users, crie ou convide o primeiro usuário. O primeiro perfil recebe `admin`; os seguintes recebem `attendant`.
-4. Depois de entrar como administrador, use Equipe → Convidar assistente para os próximos acessos.
+3. Em Authentication → URL Configuration, use `https://central-frota.onrender.com` como Site URL e adicione `https://central-frota.onrender.com/?first_access=1` às Redirect URLs.
+4. Em Authentication → Users, crie diretamente o primeiro usuário, confirme o e-mail e não compartilhe uma senha temporária. O primeiro perfil recebe `admin`; os seguintes recebem `attendant`.
+5. Na tela de login, esse usuário escolhe **Primeiro acesso**, informa o e-mail cadastrado e recebe um link individual para definir a própria senha. Enquanto `first_access_completed_at` não existir, qualquer sessão autenticada fica bloqueada na definição da senha e não acessa os módulos. Depois de entrar como administrador, use Equipe → Convidar assistente para os próximos acessos; esses convites incluem o redirecionamento correto.
 
 O SQL pode ser executado novamente com segurança durante a implantação inicial: tabelas e índices usam `if not exists` e as cargas demonstrativas usam `on conflict`.
 
