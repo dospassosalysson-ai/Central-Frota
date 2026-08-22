@@ -7,11 +7,14 @@ create table if not exists public.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
   display_name text,
+  job_title text,
   role text not null default 'attendant' check (role in ('admin', 'attendant')),
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists job_title text;
 
 create or replace function public.handle_new_auth_user()
 returns trigger
@@ -19,11 +22,12 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (user_id, email, display_name, role)
+  insert into public.profiles (user_id, email, display_name, job_title, role)
   values (
     new.id,
     coalesce(new.email, ''),
     coalesce(new.raw_user_meta_data ->> 'full_name', split_part(coalesce(new.email, 'Usuário'), '@', 1)),
+    new.raw_user_meta_data ->> 'job_title',
     case when exists (select 1 from public.profiles) then 'attendant' else 'admin' end
   )
   on conflict (user_id) do nothing;
@@ -35,14 +39,22 @@ create or replace trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_auth_user();
 
-insert into public.profiles (user_id, email, display_name, role)
+insert into public.profiles (user_id, email, display_name, job_title, role)
 select
   id,
   coalesce(email, ''),
   coalesce(raw_user_meta_data ->> 'full_name', split_part(coalesce(email, 'Usuário'), '@', 1)),
+  raw_user_meta_data ->> 'job_title',
   case when row_number() over (order by created_at, id) = 1 then 'admin' else 'attendant' end
 from auth.users
 on conflict (user_id) do nothing;
+
+update public.profiles as profile
+set job_title = auth_user.raw_user_meta_data ->> 'job_title', updated_at = now()
+from auth.users as auth_user
+where profile.user_id = auth_user.id
+  and profile.job_title is null
+  and nullif(auth_user.raw_user_meta_data ->> 'job_title', '') is not null;
 
 create table if not exists public.contacts (
   id text primary key,

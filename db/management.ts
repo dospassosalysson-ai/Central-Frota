@@ -4,7 +4,7 @@ type ChecklistItem = { id: string; label: string; done: boolean };
 type DatabaseRow = Record<string, unknown>;
 
 export type ManagementAction =
-  | { action: 'invite-user'; email: string; fullName: string; role?: 'admin' | 'attendant' }
+  | { action: 'invite-user'; email: string; fullName: string; jobTitle?: string; role?: 'admin' | 'attendant' }
   | { action: 'update-member'; userId: string; active?: boolean; role?: 'admin' | 'attendant' }
   | {
       action: 'create-plan';
@@ -42,7 +42,7 @@ export async function getManagementSnapshot(profile: UserProfile) {
   }
 
   const [profilesResult, plansResult, commentsResult, notificationsResult, conversationsResult, documentsResult, budgetsResult, centersResult, approvalsResult, messagesResult, auditResult] = await Promise.all([
-    database.from('profiles').select('user_id, email, display_name, role, active, updated_at').eq('active', true).order('display_name'),
+    database.from('profiles').select('user_id, email, display_name, job_title, role, active, updated_at').eq('active', true).order('display_name'),
     plansQuery,
     database.from('action_comments').select('*').order('created_at', { ascending: true }),
     database.from('notifications').select('*').eq('recipient_id', profile.userId).order('created_at', { ascending: false }).limit(30),
@@ -119,6 +119,7 @@ export async function getManagementSnapshot(profile: UserProfile) {
       userId: member.user_id,
       email: profile.role === 'admin' ? member.email : undefined,
       displayName: member.display_name,
+      jobTitle: member.job_title || (member.role === 'admin' ? 'Administrador da Central' : 'Assistente'),
       role: member.role,
       active: member.active,
       assignedPlans: plans.filter((plan) => plan.ownerId === member.user_id && !['completed', 'cancelled'].includes(String(plan.status))).length,
@@ -193,7 +194,7 @@ export async function mutateManagement(action: ManagementAction, profile: UserPr
     const fullName = action.fullName.trim();
     if (!/^\S+@\S+\.\S+$/.test(email) || !fullName) throw new Error('INVALID_MEMBER');
     const redirectTo = `${(process.env.APP_URL || 'https://central-frota.onrender.com').replace(/\/$/, '')}/?first_access=1`;
-    const { data, error } = await database.auth.admin.inviteUserByEmail(email, { redirectTo, data: { full_name: fullName } });
+    const { data, error } = await database.auth.admin.inviteUserByEmail(email, { redirectTo, data: { full_name: fullName, job_title: action.jobTitle?.trim() || null } });
     if (error || !data.user) throw new Error(error?.message || 'INVITE_FAILED');
     if (action.role === 'admin') await database.from('profiles').update({ role: 'admin', updated_at: new Date().toISOString() }).eq('user_id', data.user.id);
     await writeAudit(profile, 'team_member', data.user.id, 'invited', { email, role: action.role || 'attendant' });

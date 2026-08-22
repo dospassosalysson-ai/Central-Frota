@@ -6,6 +6,7 @@ export type UserProfile = {
   userId: string;
   email: string;
   displayName: string;
+  jobTitle: string;
   role: UserRole;
   active: boolean;
 };
@@ -44,7 +45,7 @@ export async function requireSupabaseUser(request: Request): Promise<User | null
 export async function getUserProfile(user: User): Promise<UserProfile | null> {
   const { data, error } = await getSupabaseAdmin()
     .from('profiles')
-    .select('user_id, email, display_name, role, active')
+    .select('user_id, email, display_name, job_title, role, active')
     .eq('user_id', user.id)
     .maybeSingle();
   if (error || !data || !data.active) return null;
@@ -52,6 +53,7 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
     userId: data.user_id,
     email: data.email,
     displayName: data.display_name?.trim() || userDisplayName(user),
+    jobTitle: data.job_title?.trim() || (data.role === 'admin' ? 'Administrador da Central' : 'Assistente'),
     role: data.role as UserRole,
     active: data.active,
   };
