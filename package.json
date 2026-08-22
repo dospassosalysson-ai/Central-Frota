@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "postbuild": "node scripts/prepare-standalone.mjs",
-    "start": "node .next/standalone/server.js",
+    "start": "node -e \"process.env.HOSTNAME='0.0.0.0'; require('./.next/standalone/server.js')\"",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --noEmit"
   },
