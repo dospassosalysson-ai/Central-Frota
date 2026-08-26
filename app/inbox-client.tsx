@@ -1,5 +1,6 @@
 'use client';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   Archive,
   ArrowLeft,
@@ -13,6 +14,7 @@ import {
   LogOut,
   LayoutDashboard,
   MessageSquareText,
+  MessageCircle,
   MoreHorizontal,
   PanelRight,
   Paperclip,
@@ -30,6 +32,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { UserProfile } from '../lib/supabase-server';
 import ManagementClient, { type ManagementArea } from './management-client';
 import OperationsClient, { type OperationsArea } from './operations-client';
+import TeamChatClient from './team-chat-client';
 
 type Message = {
   id: string;
@@ -127,9 +130,9 @@ function contactTypeLabel(type: Conversation['contactType']) {
   return 'Contato';
 }
 
-export default function InboxClient({ profile, accessToken, onSignOut }: { profile: UserProfile; accessToken: string; onSignOut: () => void | Promise<unknown> }) {
+export default function InboxClient({ profile, accessToken, supabaseClient = null, onSignOut }: { profile: UserProfile; accessToken: string; supabaseClient?: SupabaseClient | null; onSignOut: () => void | Promise<unknown> }) {
   const currentUser = profile.displayName.split(' ')[0] || profile.displayName;
-  const [activeArea, setActiveArea] = useState<'inbox' | OperationsArea | ManagementArea>(profile.role === 'admin' ? 'control' : 'actions');
+  const [activeArea, setActiveArea] = useState<'inbox' | 'chat' | OperationsArea | ManagementArea>(profile.role === 'admin' ? 'control' : 'actions');
   const [conversations, setConversations] = useState(demoConversations);
   const [selectedId, setSelectedId] = useState(demoConversations[0].id);
   const [queue, setQueue] = useState<'all' | 'mine' | 'waiting'>('all');
@@ -139,6 +142,8 @@ export default function InboxClient({ profile, accessToken, onSignOut }: { profi
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [mobileListOpen, setMobileListOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
+  const [chatFocusConversationId, setChatFocusConversationId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const notify = useCallback((message: string) => setToast(message), []);
@@ -154,6 +159,19 @@ export default function InboxClient({ profile, accessToken, onSignOut }: { profi
       })
       .catch(() => notify('Modo de demonstração ativo.'));
   }, [accessToken, notify]);
+
+  useEffect(() => {
+    let active = true;
+    const loadUnread = () => fetch('/api/internal-chat', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((data: { channels?: { unreadCount: number }[] }) => {
+        if (active) setChatUnread((data.channels ?? []).reduce((total, channel) => total + channel.unreadCount, 0));
+      })
+      .catch(() => undefined);
+    void loadUnread();
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void loadUnread(); }, 30_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [accessToken]);
 
   useEffect(() => {
     if (!toast) return;
@@ -265,6 +283,7 @@ export default function InboxClient({ profile, accessToken, onSignOut }: { profi
         <nav className="rail-nav">
           {profile.role === 'admin' && <button className={`rail-button ${activeArea === 'control' ? 'active' : ''}`} aria-label="Sala de controle" title="Sala de controle" onClick={() => setActiveArea('control')}><LayoutDashboard size={19} /></button>}
           <button className={`rail-button ${activeArea === 'inbox' ? 'active' : ''}`} aria-label="Atendimento" title="Atendimento" onClick={() => setActiveArea('inbox')}><MessageSquareText size={19} /></button>
+          <button className={`rail-button rail-chat-button ${activeArea === 'chat' ? 'active' : ''}`} aria-label="Chat interno" title="Chat interno" onClick={() => { setChatFocusConversationId(null); setActiveArea('chat'); }}><MessageCircle size={19} />{chatUnread > 0 && <span>{chatUnread > 99 ? '99+' : chatUnread}</span>}</button>
           <button className={`rail-button ${activeArea === 'actions' ? 'active' : ''}`} aria-label="Planos de ação" title="Planos de ação" onClick={() => setActiveArea('actions')}><ClipboardList size={19} /></button>
           <button className={`rail-button ${activeArea === 'documents' ? 'active' : ''}`} aria-label="Notas fiscais" title="Notas fiscais" onClick={() => setActiveArea('documents')}><FileText size={19} /></button>
           <button className={`rail-button ${activeArea === 'fleet' ? 'active' : ''}`} aria-label="Frota e DRE" title="Frota e DRE" onClick={() => setActiveArea('fleet')}><Truck size={19} /></button>
@@ -329,6 +348,7 @@ export default function InboxClient({ profile, accessToken, onSignOut }: { profi
           </div>
           <div className="chat-actions">
             <button aria-label="Buscar nesta conversa" onClick={() => notify('Busca na conversa em preparação.')}><Search size={16} /></button>
+            <button className="header-internal-chat" aria-label="Abrir discussão interna" title="Discussão interna" onClick={() => { setChatFocusConversationId(selected.id); setActiveArea('chat'); }}><MessageCircle size={16} /></button>
             <button aria-label="Mostrar detalhes" onClick={() => setDetailsOpen((open) => !open)}><PanelRight size={16} /></button>
             <button aria-label="Mais opções" onClick={() => notify('Mais opções em preparação.')}><MoreHorizontal size={17} /></button>
           </div>
@@ -390,10 +410,13 @@ export default function InboxClient({ profile, accessToken, onSignOut }: { profi
         <div className="details-section notes-section">
           <p className="details-label">Anotações internas <button onClick={() => notify('Editor de anotações em preparação.')}><Plus size={14} /></button></p>
           <p>{selected.note || 'Nenhuma anotação adicionada.'}</p>
+          <button className="internal-discussion-shortcut" onClick={() => { setChatFocusConversationId(selected.id); setActiveArea('chat'); }}><MessageCircle size={14} /><span><strong>Abrir discussão interna</strong><small>Somente integrantes autorizados</small></span><ChevronRight size={14} /></button>
         </div>
         <button className={`resolve-button ${selected.status === 'resolved' ? 'reopen' : ''}`} onClick={() => void toggleResolved()}>{selected.status === 'resolved' ? <Archive size={15} /> : <Check size={15} />}{selected.status === 'resolved' ? 'Reabrir atendimento' : 'Finalizar atendimento'}</button>
       </aside>
-      </> : ['documents', 'fleet', 'reports'].includes(activeArea)
+      </> : activeArea === 'chat'
+        ? <TeamChatClient profile={profile} accessToken={accessToken} supabaseClient={supabaseClient} notify={notify} focusConversationId={chatFocusConversationId} onFocusConversationHandled={() => setChatFocusConversationId(null)} onOpenInboxConversation={(conversationId) => { const target = conversations.find((conversation) => conversation.id === conversationId); if (!target) { notify('Este atendimento não está disponível na fila atual.'); return; } setSelectedId(target.id); setMobileListOpen(false); setActiveArea('inbox'); }} onUnreadChange={setChatUnread} />
+        : ['documents', 'fleet', 'reports'].includes(activeArea)
         ? <OperationsClient area={activeArea as OperationsArea} currentUser={currentUser} accessToken={accessToken} notify={notify} />
         : <ManagementClient area={activeArea as ManagementArea} profile={profile} accessToken={accessToken} notify={notify} />}
 

@@ -90,7 +90,7 @@ export default function AuthGate() {
   }
   if (session && !profile && !error) return <AuthLoading />;
   if (session && client && profile) {
-    return <InboxClient profile={profile} accessToken={session.access_token} onSignOut={() => client.auth.signOut()} />;
+    return <InboxClient profile={profile} accessToken={session.access_token} supabaseClient={client} onSignOut={() => client.auth.signOut()} />;
   }
   if (session && client && !profile) {
     return <main className="auth-page auth-setup-page"><section className="auth-form-panel"><div className="auth-form setup-notice"><span className="auth-lock"><ShieldCheck size={20} /></span><p className="auth-eyebrow">Configuração inicial</p><h2>Preparando seu perfil</h2><p className="auth-description">{error || 'O perfil de acesso ainda não foi criado no banco.'}</p><button type="button" onClick={() => window.location.reload()}>Tentar novamente</button><button className="link-button" type="button" onClick={() => void client.auth.signOut()}>Sair desta conta</button></div></section></main>;

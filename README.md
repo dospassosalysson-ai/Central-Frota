@@ -6,6 +6,7 @@ Central operacional para atendimento compartilhado no WhatsApp, gestão de frota
 
 - sala de controle administrativa com atendimento, fiscal, equipe, custos, alertas e tráfego;
 - caixa compartilhada para motoristas, supervisores LOG20 e fornecedores;
+- chat interno separado do WhatsApp, com sala Geral da Frota, conversas diretas, discussões vinculadas aos atendimentos, leitura individual e notificações;
 - autoria interna das respostas por painel ou celular — ecos do celular são identificados como `Wallace • celular`;
 - planos de ação com responsável, prioridade, prazo, checklist, comentários, progresso e notificação de conclusão;
 - convite de assistentes e perfis `admin` / `attendant`;
@@ -38,6 +39,8 @@ O navegador recebe apenas a chave publicável. A `SUPABASE_SECRET_KEY` fica excl
 5. Na tela de login, esse usuário escolhe **Primeiro acesso**, informa o e-mail cadastrado e recebe um link individual para definir a própria senha. Enquanto `first_access_completed_at` não existir, qualquer sessão autenticada fica bloqueada na definição da senha e não acessa os módulos. Depois de entrar como administrador, use Equipe → Convidar assistente para os próximos acessos; esses convites incluem o redirecionamento correto.
 
 O SQL pode ser executado novamente com segurança durante a implantação inicial: tabelas e índices usam `if not exists` e as cargas demonstrativas usam `on conflict`.
+
+Em bancos já existentes, aplique as migrações versionadas de [`supabase/migrations`](supabase/migrations) na ordem dos arquivos antes de publicar o código correspondente. O Render não executa essas migrações automaticamente. O chat interno usa canais privados do Supabase Realtime; mensagens são persistidas no Postgres e o tempo real funciona apenas como sinal de atualização.
 
 ## Variáveis de ambiente
 
